@@ -252,9 +252,15 @@ async function saveBitcoinSettingsToDB() {
     try {
         const settings = window.backofficeSettings.settings.paymentMethods.crypto.btc;
         
+        console.log('DEBUG: Bitcoin settings object:', settings);
+        console.log('DEBUG: Bitcoin address:', settings.address);
+        
         const supabaseUrl = window.AdminAPI.supabaseUrl;
         const supabaseKey = window.AdminAPI.supabaseKey;
         const authToken = sessionStorage.getItem('adminToken');
+        
+        console.log('DEBUG: Supabase URL:', supabaseUrl);
+        console.log('DEBUG: Auth token exists:', !!authToken);
         
         // First check if Bitcoin settings already exist
         const checkResponse = await fetch(`${supabaseUrl}/rest/v1/deposit_methods?method_type=eq.crypto&currency=eq.BTC`, {
@@ -265,11 +271,14 @@ async function saveBitcoinSettingsToDB() {
             }
         });
         
+        console.log('DEBUG: Check response status:', checkResponse.status);
+        
         if (!checkResponse.ok) {
             throw new Error('Failed to check existing Bitcoin settings');
         }
         
         const existingRecords = await checkResponse.json();
+        console.log('DEBUG: Existing records:', existingRecords);
         
         let response;
         if (existingRecords.length === 0) {
@@ -302,6 +311,23 @@ async function saveBitcoinSettingsToDB() {
         } else {
             // Update existing record
             const btcRecord = existingRecords[0];
+            console.log('DEBUG: Updating record ID:', btcRecord.id);
+            console.log('DEBUG: New address to save:', settings.address);
+            
+            const updateData = {
+                address: settings.address,
+                instructions: settings.instructions,
+                min_amount: settings.minAmount.toString(),
+                max_amount: settings.maxAmount.toString(),
+                fee_percentage: settings.feePercentage.toString(),
+                fixed_fee: settings.fixedFee.toString(),
+                processing_time_hours: settings.processingTimeHours,
+                is_active: settings.enabled,
+                updated_at: new Date().toISOString()
+            };
+            
+            console.log('DEBUG: Update data:', updateData);
+            
             response = await fetch(`${supabaseUrl}/rest/v1/deposit_methods?id=eq.${btcRecord.id}`, {
                 method: 'PATCH',
                 headers: {
@@ -310,18 +336,10 @@ async function saveBitcoinSettingsToDB() {
                     'Content-Type': 'application/json',
                     'Prefer': 'return=minimal'
                 },
-                body: JSON.stringify({
-                    address: settings.address,
-                    instructions: settings.instructions,
-                    min_amount: settings.minAmount.toString(),
-                    max_amount: settings.maxAmount.toString(),
-                    fee_percentage: settings.feePercentage.toString(),
-                    fixed_fee: settings.fixedFee.toString(),
-                    processing_time_hours: settings.processingTimeHours,
-                    is_active: settings.enabled,
-                    updated_at: new Date().toISOString()
-                })
+                body: JSON.stringify(updateData)
             });
+            
+            console.log('DEBUG: Update response status:', response.status);
         }
 
         if (!response.ok) {
