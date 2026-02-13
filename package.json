@@ -1,0 +1,17 @@
+{
+  "name": "trading-platform-admin",
+  "version": "1.0.0",
+  "description": "Trading Platform Admin Dashboard",
+  "main": "dashboard-standalone.html",
+  "scripts": {
+    "dev": "npx serve . -p 3000",
+    "build": "echo 'No build process needed for static files'",
+    "start": "npx serve . -p 3000"
+  },
+  "keywords": ["admin", "dashboard", "trading", "platform"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
