@@ -5,7 +5,7 @@
   "main": "dashboard-standalone.html",
   "scripts": {
     "dev": "npx serve . -p 3000",
-    "build": "echo 'No build process needed for static files'",
+    "build": "echo 'Static files ready for deployment'",
     "start": "npx serve . -p 3000"
   },
   "keywords": ["admin", "dashboard", "trading", "platform"],
