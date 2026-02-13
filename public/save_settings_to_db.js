@@ -19,6 +19,9 @@ async function saveACHSettingsToDB() {
         }
         
         // First, find the ACH record
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
         const findResponse = await fetch(`${supabaseUrl}/rest/v1/deposit_methods?method_type=eq.ach&currency=eq.USD&select=*`, {
             method: 'GET',
             headers: {
@@ -26,8 +29,11 @@ async function saveACHSettingsToDB() {
                 'Authorization': `Bearer ${authToken}`,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=minimal'
-            }
+            },
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
 
         if (!findResponse.ok) {
             const errorText = await findResponse.text();
@@ -391,24 +397,74 @@ async function saveUSDTSettingsToDB() {
     }
 }
 
+// Retry function with exponential backoff
+async function retryRequest(requestFn, maxRetries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await requestFn();
+        } catch (error) {
+            console.warn(`Attempt ${attempt} failed:`, error.message);
+            
+            if (attempt === maxRetries) {
+                throw error;
+            }
+            
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt - 1)));
+        }
+    }
+}
+
 // Main function to save all payment method settings to database
 async function saveAllPaymentMethodsToDB() {
     try {
         console.log('Saving all payment method settings to database...');
         
-        // Save all payment methods in parallel
-        const results = await Promise.allSettled([
-            saveACHSettingsToDB(),
-            savePayPalSettingsToDB(),
-            saveBitcoinSettingsToDB(),
-            saveUSDTSettingsToDB()
-        ]);
+        // Save payment methods sequentially to avoid connection issues
+        const methods = [
+            { name: 'ACH', fn: saveACHSettingsToDB },
+            { name: 'PayPal', fn: savePayPalSettingsToDB },
+            { name: 'Bitcoin', fn: saveBitcoinSettingsToDB },
+            { name: 'USDT', fn: saveUSDTSettingsToDB }
+        ];
+
+        const results = [];
+        
+        for (const method of methods) {
+            try {
+                console.log(`Saving ${method.name} settings...`);
+                const result = await retryRequest(method.fn);
+                results.push({ status: 'fulfilled', value: result, method: method.name });
+                console.log(`${method.name} settings saved successfully`);
+            } catch (error) {
+                console.error(`Failed to save ${method.name} settings:`, error);
+                results.push({ status: 'rejected', reason: error, method: method.name });
+            }
+        }
 
         // Check if all saves were successful
         const failedSaves = results.filter(result => result.status === 'rejected');
         if (failedSaves.length > 0) {
+            const failedMethods = failedSaves.map(f => f.method).join(', ');
             console.error('Some payment methods failed to save:', failedSaves);
-            throw new Error('Failed to save some payment method settings');
+            
+            // Show partial success message
+            const successfulCount = results.length - failedSaves.length;
+            if (successfulCount > 0) {
+                const successfulMethods = results
+                    .filter(r => r.status === 'fulfilled')
+                    .map(r => r.method)
+                    .join(', ');
+                return { 
+                    success: false, 
+                    error: `Failed to save: ${failedMethods}. Successfully saved: ${successfulMethods}`,
+                    partial: true,
+                    successful: successfulMethods,
+                    failed: failedMethods
+                };
+            }
+            
+            throw new Error(`Failed to save payment method settings: ${failedMethods}`);
         }
 
         console.log('All payment method settings saved to database successfully');
