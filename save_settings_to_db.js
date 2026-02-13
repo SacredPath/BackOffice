@@ -26,7 +26,7 @@ async function saveACHSettingsToDB() {
         
         // First, find the ACH record
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
         
         const findResponse = await fetch(`${supabaseUrl}/rest/v1/deposit_methods?method_type=eq.ach&currency=eq.USD&select=*`, {
             method: 'GET',
