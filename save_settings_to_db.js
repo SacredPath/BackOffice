@@ -116,7 +116,20 @@ async function saveACHSettingsToDB() {
             throw new Error(`Failed to update ACH settings: ${updateResponse.status} ${errorText}`);
         }
 
-        const result = await updateResponse.json();
+        // Handle empty response when using Prefer: return=minimal
+        const responseText = await updateResponse.text();
+        let result = null;
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.warn('Response was not valid JSON, treating as success');
+                result = { success: true };
+            }
+        } else {
+            result = { success: true };
+        }
+        
         console.log('ACH settings updated in database:', result);
         return result;
 
@@ -207,7 +220,20 @@ async function savePayPalSettingsToDB() {
             throw new Error(`Failed to update PayPal settings: ${response.status} ${errorText}`);
         }
 
-        const result = await response.json();
+        // Handle empty response when using Prefer: return=minimal
+        const responseText = await response.text();
+        let result = null;
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.warn('Response was not valid JSON, treating as success');
+                result = { success: true };
+            }
+        } else {
+            result = { success: true };
+        }
+        
         console.log('PayPal settings updated in database:', result);
         return result;
 
@@ -297,7 +323,20 @@ async function saveBitcoinSettingsToDB() {
             throw new Error(`Failed to update Bitcoin settings: ${response.status} ${errorText}`);
         }
 
-        const result = await response.json();
+        // Handle empty response when using Prefer: return=minimal
+        const responseText = await response.text();
+        let result = null;
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.warn('Response was not valid JSON, treating as success');
+                result = { success: true };
+            }
+        } else {
+            result = { success: true };
+        }
+        
         console.log('Bitcoin settings updated in database:', result);
         return result;
 
@@ -387,7 +426,20 @@ async function saveUSDTSettingsToDB() {
             throw new Error(`Failed to update USDT settings: ${response.status} ${errorText}`);
         }
 
-        const result = await response.json();
+        // Handle empty response when using Prefer: return=minimal
+        const responseText = await response.text();
+        let result = null;
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.warn('Response was not valid JSON, treating as success');
+                result = { success: true };
+            }
+        } else {
+            result = { success: true };
+        }
+        
         console.log('USDT settings updated in database:', result);
         return result;
 
