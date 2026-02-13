@@ -8,10 +8,16 @@ async function saveACHSettingsToDB() {
     try {
         const settings = window.backofficeSettings.settings.paymentMethods.ach;
         
+        console.log('DEBUG: ACH settings object:', settings);
+        console.log('DEBUG: ACH bank name:', settings.bankName);
+        
         // Use Supabase REST API to find and update the record
-        const supabaseUrl = window.__ENV?.SUPABASE_URL || 'https://ubycoeyutauzjgxbozcm.supabase.co';
-        const supabaseKey = window.__ENV?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cH6R8';
+        const supabaseUrl = window.AdminAPI.supabaseUrl;
+        const supabaseKey = window.AdminAPI.supabaseKey;
         const authToken = sessionStorage.getItem('adminToken');
+        
+        console.log('DEBUG: Supabase URL:', supabaseUrl);
+        console.log('DEBUG: Auth token exists:', !!authToken);
         
         if (!authToken) {
             console.warn('No auth token found, skipping database save');
@@ -146,9 +152,15 @@ async function savePayPalSettingsToDB() {
     try {
         const settings = window.backofficeSettings.settings.paymentMethods.paypal;
         
+        console.log('DEBUG: PayPal settings object:', settings);
+        console.log('DEBUG: PayPal email:', settings.email);
+        
         const supabaseUrl = window.AdminAPI.supabaseUrl;
         const supabaseKey = window.AdminAPI.supabaseKey;
         const authToken = sessionStorage.getItem('adminToken');
+        
+        console.log('DEBUG: Supabase URL:', supabaseUrl);
+        console.log('DEBUG: Auth token exists:', !!authToken);
         
         // First check if PayPal settings already exist
         const checkResponse = await fetch(`${supabaseUrl}/rest/v1/deposit_methods?method_type=eq.paypal`, {
@@ -375,9 +387,15 @@ async function saveUSDTSettingsToDB() {
     try {
         const settings = window.backofficeSettings.settings.paymentMethods.crypto.usdt;
         
+        console.log('DEBUG: USDT settings object:', settings);
+        console.log('DEBUG: USDT address:', settings.address);
+        
         const supabaseUrl = window.AdminAPI.supabaseUrl;
         const supabaseKey = window.AdminAPI.supabaseKey;
         const authToken = sessionStorage.getItem('adminToken');
+        
+        console.log('DEBUG: Supabase URL:', supabaseUrl);
+        console.log('DEBUG: Auth token exists:', !!authToken);
         
         // First check if USDT settings already exist
         const checkResponse = await fetch(`${supabaseUrl}/rest/v1/deposit_methods?method_type=eq.crypto&currency=eq.USDT`, {
