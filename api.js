@@ -529,3 +529,6 @@ class AdminAPI {
 
 // Initialize global API instance
 window.AdminAPI = new AdminAPI();
+
+// Create window.API for backward compatibility
+window.API = window.AdminAPI;
