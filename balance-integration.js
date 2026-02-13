@@ -13,22 +13,29 @@ class BalanceManager {
      * Get user balance data from wallet tables
      */
     async getUserBalances(userId) {
+        console.log('BalanceManager: Fetching balances for user:', userId);
+        
         // Check cache first
         const cached = this.cache.get(userId);
         if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+            console.log('BalanceManager: Using cached data for user:', userId);
             return cached.data;
         }
 
         try {
             // Fetch from user_wallets table
+            console.log('BalanceManager: Fetching user_wallets...');
             const { data: userWallets, error: walletsError } = await window.API.request('user_wallets?user_id=eq.' + userId);
+            console.log('BalanceManager: user_wallets result:', { data: userWallets, error: walletsError });
             
             // Fetch from crypto_wallets table  
+            console.log('BalanceManager: Fetching crypto_wallets...');
             const { data: cryptoWallets, error: cryptoError } = await window.API.request('crypto_wallets?user_id=eq.' + userId);
+            console.log('BalanceManager: crypto_wallets result:', { data: cryptoWallets, error: cryptoError });
 
             if (walletsError || cryptoError) {
-                console.error('Error fetching wallet data:', walletsError || cryptoError);
-                return { wallets: {}, totalBalance: 0 };
+                console.error('BalanceManager: Error fetching wallet data:', walletsError || cryptoError);
+                return { wallets: {}, totalBalance: 0, error: walletsError || cryptoError };
             }
 
             // Combine wallet data
@@ -36,7 +43,7 @@ class BalanceManager {
             let totalBalance = 0;
 
             // Process user_wallets
-            if (userWallets) {
+            if (userWallets && userWallets.length > 0) {
                 userWallets.forEach(wallet => {
                     const currency = wallet.currency || 'USD';
                     wallets[currency] = {
@@ -51,7 +58,7 @@ class BalanceManager {
             }
 
             // Process crypto_wallets
-            if (cryptoWallets) {
+            if (cryptoWallets && cryptoWallets.length > 0) {
                 cryptoWallets.forEach(wallet => {
                     const currency = wallet.currency || wallet.symbol || 'BTC';
                     wallets[currency] = {
@@ -67,6 +74,8 @@ class BalanceManager {
                 });
             }
 
+            console.log('BalanceManager: Combined wallet data:', { wallets, totalBalance });
+
             // Cache the result
             this.cache.set(userId, {
                 data: { wallets, totalBalance },
@@ -75,8 +84,8 @@ class BalanceManager {
 
             return { wallets, totalBalance };
         } catch (error) {
-            console.error('Error in getUserBalances:', error);
-            return { wallets: {}, totalBalance: 0 };
+            console.error('BalanceManager: Error in getUserBalances:', error);
+            return { wallets: {}, totalBalance: 0, error: error.message };
         }
     }
 
