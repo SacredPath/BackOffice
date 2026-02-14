@@ -103,13 +103,29 @@ class AdminAPI {
                 const body = JSON.parse(options.body);
                 
                 try {
+                    // Extract user_id and currency from the request
+                    let userId, currency;
+                    
+                    if (options.method === 'PATCH' && endpoint.includes('user_balances')) {
+                        // Extract from URL parameters for PATCH
+                        const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+                        userId = urlParams.get('user_id')?.replace('eq.', '');
+                        currency = urlParams.get('currency')?.replace('eq.', '');
+                    } else {
+                        // Extract from body for POST
+                        userId = body.user_id;
+                        currency = body.currency;
+                    }
+                    
+                    console.log('Extracted params:', { userId, currency, body });
+                    
                     // Insert into bypass table
                     const bypassResponse = await fetch(`${this.supabaseUrl}/rest/v1/admin_balance_updates`, {
                         method: 'POST',
                         headers,
                         body: JSON.stringify({
-                            user_id: body.user_id,
-                            currency: body.currency,
+                            user_id: userId,
+                            currency: currency,
                             available: parseFloat(body.available) || 0,
                             locked: parseFloat(body.locked) || 0,
                             amount: parseFloat(body.amount) || 0,
