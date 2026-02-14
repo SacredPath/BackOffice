@@ -119,6 +119,33 @@ class AdminAPI {
                 return data;
             }
             
+            // Use RPC for user_balances PATCH operations
+            if (options.method === 'PATCH' && endpoint.includes('user_balances')) {
+                const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+                const userId = urlParams.get('user_id')?.replace('eq.', '');
+                const currency = urlParams.get('currency')?.replace('eq.', '');
+                const body = JSON.parse(options.body);
+                
+                const { data, error } = await fetch(`${this.supabaseUrl}/rest/v1/rpc/admin_update_user_balance`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        p_user_id: userId,
+                        p_currency: currency,
+                        p_amount: body.amount || 0,
+                        p_usd_value: body.usd_value || 0
+                    })
+                }).then(res => res.json());
+                
+                if (error) {
+                    console.error('Service API Error Response:', error);
+                    throw new Error(error.message);
+                }
+                
+                console.log(`Service API Response Status: 204`);
+                return data;
+            }
+            
             // Fallback to regular fetch for other operations
             const response = await fetch(`${this.supabaseUrl}/rest/v1/${endpoint}`, {
                 ...options,
@@ -821,7 +848,8 @@ class AdminAPI {
             }
 
             // Create audit log
-            await this.createAuditLog('balance_update', userId, `Admin updated ${currency} balance`, null, updates);
+            const adminId = sessionStorage.getItem('adminId') || 'system';
+            await this.createAuditLog('balance_update', userId, `Admin updated ${currency} balance`, adminId, updates);
 
             return results;
         } catch (error) {
