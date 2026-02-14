@@ -83,22 +83,45 @@ class AdminAPI {
         }
     }
 
-    // Service role request method that bypasses RLS
+    // Service role request method that bypasses RLS using Supabase client
     async serviceRequest(endpoint, options = {}) {
-        const url = `${this.supabaseUrl}/rest/v1/${endpoint}`;
+        // Use Supabase client for proper service role handling
+        const { createClient } = await import('@supabase/supabase-js');
+        
+        const supabase = createClient(this.supabaseUrl, this.supabaseKey);
+        
         const headers = {
             'apikey': this.supabaseKey,
-            'Authorization': `Bearer ${this.supabaseKey}`, // Use service role key for auth
+            'Authorization': `Bearer ${this.supabaseKey}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=minimal', // Minimize response
-            'X-Role': 'service_role', // Standard header for role context
+            'Prefer': 'return=minimal',
             ...options.headers
         };
 
         try {
-            console.log(`Service API Request: ${url} ${options.method || 'GET'}`);
+            console.log(`Service API Request: ${endpoint} ${options.method || 'GET'}`);
             
-            const response = await fetch(url, {
+            // Use Supabase client for admin operations
+            if (options.method === 'POST' && endpoint === 'wallet_balances') {
+                const { data, error } = await supabase
+                    .from('wallet_balances')
+                    .upsert(JSON.parse(options.body), {
+                        headers: {
+                            'Authorization': `Bearer ${this.supabaseKey}`
+                        }
+                    });
+                
+                if (error) {
+                    console.error('Service API Error Response:', error);
+                    throw new Error(error.message);
+                }
+                
+                console.log(`Service API Response Status: 201`);
+                return data;
+            }
+            
+            // Fallback to regular fetch for other operations
+            const response = await fetch(`${this.supabaseUrl}/rest/v1/${endpoint}`, {
                 ...options,
                 headers
             });
