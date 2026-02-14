@@ -102,28 +102,46 @@ class AdminAPI {
                 
                 const body = JSON.parse(options.body);
                 
-                // Insert into bypass table
-                const bypassData = await fetch(`${this.supabaseUrl}/rest/v1/admin_balance_updates`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        user_id: body.user_id,
-                        currency: body.currency,
-                        available: parseFloat(body.available) || 0,
-                        locked: parseFloat(body.locked) || 0,
-                        amount: parseFloat(body.amount) || 0,
-                        usd_value: parseFloat(body.usd_value) || 0
-                    })
-                }).then(res => res.json());
-                
-                // Process the updates
-                await fetch(`${this.supabaseUrl}/rest/v1/rpc/process_admin_balance_updates`, {
-                    method: 'POST',
-                    headers
-                });
-                
-                console.log(`Service API Response Status: 200`);
-                return { success: true };
+                try {
+                    // Insert into bypass table
+                    const bypassResponse = await fetch(`${this.supabaseUrl}/rest/v1/admin_balance_updates`, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({
+                            user_id: body.user_id,
+                            currency: body.currency,
+                            available: parseFloat(body.available) || 0,
+                            locked: parseFloat(body.locked) || 0,
+                            amount: parseFloat(body.amount) || 0,
+                            usd_value: parseFloat(body.usd_value) || 0
+                        })
+                    });
+                    
+                    if (!bypassResponse.ok) {
+                        const errorData = await bypassResponse.json().catch(() => ({}));
+                        console.error('Bypass table error:', errorData);
+                        throw new Error(errorData.message || 'Failed to insert into bypass table');
+                    }
+                    
+                    // Process the updates
+                    const processResponse = await fetch(`${this.supabaseUrl}/rest/v1/rpc/process_admin_balance_updates`, {
+                        method: 'POST',
+                        headers
+                    });
+                    
+                    if (!processResponse.ok) {
+                        const errorData = await processResponse.json().catch(() => ({}));
+                        console.error('Process function error:', errorData);
+                        throw new Error(errorData.message || 'Failed to process balance updates');
+                    }
+                    
+                    console.log(`Service API Response Status: 200`);
+                    return { success: true };
+                    
+                } catch (error) {
+                    console.error('Bypass operation failed:', error);
+                    throw error;
+                }
             }
             
             // Fallback to regular fetch for other operations
