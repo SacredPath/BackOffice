@@ -83,6 +83,62 @@ class AdminAPI {
         }
     }
 
+    // Service role request method that bypasses RLS
+    async serviceRequest(endpoint, options = {}) {
+        const url = `${this.supabaseUrl}/rest/v1/${endpoint}`;
+        const headers = {
+            'apikey': this.supabaseKey,
+            'Authorization': `Bearer ${this.supabaseKey}`, // Use service role key for auth
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+
+        try {
+            console.log(`Service API Request: ${url} ${options.method || 'GET'}`);
+            
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
+
+            console.log(`Service API Response Status: ${response.status}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Service API Error Response:', errorData);
+                throw new Error(errorData.message || `HTTP ${response.status}`);
+            }
+
+            // Handle 204 responses (no content)
+            if (response.status === 204) {
+                return null;
+            }
+
+            // Handle 201 responses (created) - might have empty body
+            if (response.status === 201) {
+                try {
+                    const data = await response.json();
+                    return data;
+                } catch (jsonError) {
+                    // Return success object if response body is empty
+                    return { success: true, message: 'Created successfully' };
+                }
+            }
+
+            // For all other responses, try to parse JSON
+            try {
+                const data = await response.json();
+                return data;
+            } catch (jsonError) {
+                // Return error object if JSON parsing fails
+                return { error: true, message: 'Invalid response format' };
+            }
+        } catch (error) {
+            console.error('Service API Error:', error);
+            throw error;
+        }
+    }
+
     // Authentication
     async adminLogin(email, password) {
         let admin = null;
@@ -668,15 +724,19 @@ class AdminAPI {
             // Update user_balances if amount or usd_value is provided
             if (updates.amount !== undefined || updates.usd_value !== undefined) {
                 const userBalanceUpdate = {};
-                if (updates.amount !== undefined) userBalanceUpdate.amount = updates.amount;
-                if (updates.usd_value !== undefined) userBalanceUpdate.usd_value = updates.usd_value;
+                if (updates.amount !== undefined) {
+                    userBalanceUpdate.amount = updates.amount;
+                }
+                if (updates.usd_value !== undefined) {
+                    userBalanceUpdate.usd_value = updates.usd_value;
+                }
 
                 // Check if record exists
                 const existing = await this.request(`user_balances?user_id=eq.${userId}&currency=eq.${currency}`);
                 
                 if (existing.length > 0) {
-                    // Update existing record
-                    results.user_balance = await this.request(`user_balances?user_id=eq.${userId}&currency=eq.${currency}`, {
+                    // Update existing record - use service role for RLS bypass
+                    results.user_balance = await this.serviceRequest(`user_balances?user_id=eq.${userId}&currency=eq.${currency}`, {
                         method: 'PATCH',
                         body: JSON.stringify({
                             ...userBalanceUpdate,
@@ -684,8 +744,8 @@ class AdminAPI {
                         })
                     });
                 } else {
-                    // Create new record
-                    const createResponse = await this.request('user_balances', {
+                    // Create new record - use service role for RLS bypass
+                    results.user_balance = await this.serviceRequest('user_balances', {
                         method: 'POST',
                         body: JSON.stringify({
                             user_id: userId,
@@ -696,7 +756,6 @@ class AdminAPI {
                             updated_at: new Date().toISOString()
                         })
                     });
-                    results.user_balance = createResponse;
                 }
             }
 
@@ -712,8 +771,8 @@ class AdminAPI {
                 const existing = await this.request(`wallet_balances?user_id=eq.${userId}&currency=eq.${currency}`);
                 
                 if (existing.length > 0) {
-                    // Update existing record
-                    results.wallet_balance = await this.request(`wallet_balances?user_id=eq.${userId}&currency=eq.${currency}`, {
+                    // Update existing record - use service role for RLS bypass
+                    results.wallet_balance = await this.serviceRequest(`wallet_balances?user_id=eq.${userId}&currency=eq.${currency}`, {
                         method: 'PATCH',
                         body: JSON.stringify({
                             ...walletUpdate,
@@ -722,7 +781,8 @@ class AdminAPI {
                     });
                 } else {
                     // Create new record - only insert available and locked, not total
-                    results.wallet_balance = await this.request('wallet_balances', {
+                    // Use service role for RLS bypass
+                    results.wallet_balance = await this.serviceRequest('wallet_balances', {
                         method: 'POST',
                         body: JSON.stringify({
                             user_id: userId,
