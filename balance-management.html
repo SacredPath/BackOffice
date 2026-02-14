@@ -160,11 +160,11 @@
                     <td>${balance.user_email}</td>
                     <td>${balance.user_name}</td>
                     <td>${balance.currency}</td>
-                    <td>${balance.amount !== null ? parseFloat(balance.amount).toFixed(2) : '-'}</td>
-                    <td>${balance.usd_value !== null ? parseFloat(balance.usd_value).toFixed(2) : '-'}</td>
-                    <td>${balance.available !== null ? parseFloat(balance.available).toFixed(2) : '-'}</td>
-                    <td>${balance.locked !== null ? parseFloat(balance.locked).toFixed(2) : '-'}</td>
-                    <td>${balance.total !== null ? parseFloat(balance.total).toFixed(2) : '-'}</td>
+                    <td>${balance.amount !== null && balance.amount !== undefined ? parseFloat(balance.amount).toFixed(2) : '0.00'}</td>
+                    <td>${balance.usd_value !== null && balance.usd_value !== undefined ? parseFloat(balance.usd_value).toFixed(2) : '0.00'}</td>
+                    <td>${balance.available !== null && balance.available !== undefined ? parseFloat(balance.available).toFixed(2) : '0.00'}</td>
+                    <td>${balance.locked !== null && balance.locked !== undefined ? parseFloat(balance.locked).toFixed(2) : '0.00'}</td>
+                    <td>${balance.total !== null && balance.total !== undefined ? parseFloat(balance.total).toFixed(2) : '0.00'}</td>
                     <td><span class="badge badge-${balance.type}">${balance.type}</span></td>
                     <td>${new Date(balance.updated_at).toLocaleString()}</td>
                     <td>

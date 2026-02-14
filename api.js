@@ -532,6 +532,13 @@ class AdminAPI {
         if (!token) throw new Error('Not authenticated');
 
         try {
+            // Get all users first
+            const users = await this.request('profiles?select=id,user_id,email,display_name,first_name,last_name&order=created_at.desc', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
             // Get all user_balances
             const userBalances = await this.request('user_balances?select=*&order=updated_at.desc', {
                 headers: {
@@ -546,48 +553,71 @@ class AdminAPI {
                 }
             });
 
-            // Get user info for display
-            const users = await this.request('profiles?select=id,user_id,email,display_name,first_name,last_name', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            // Combine data
+            // Combine data - ensure all users are included even with no balances
             const combinedBalances = {};
             
-            // Process user_balances
+            // Initialize all users with empty balances
+            users.forEach(user => {
+                // Add USD balance entry for all users (default to 0)
+                combinedBalances[`${user.user_id}_USD`] = {
+                    user_id: user.user_id,
+                    user_email: user.email || 'Unknown',
+                    user_name: user.display_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown',
+                    currency: 'USD',
+                    amount: 0,
+                    usd_value: 0,
+                    type: 'user_balance',
+                    updated_at: user.created_at,
+                    available: 0,
+                    locked: 0,
+                    total: 0
+                };
+            });
+            
+            // Process user_balances - update existing entries or add new ones
             userBalances.forEach(balance => {
                 const key = `${balance.user_id}_${balance.currency}`;
                 const user = users.find(u => u.user_id === balance.user_id);
-                combinedBalances[key] = {
-                    user_id: balance.user_id,
-                    user_email: user?.email || 'Unknown',
-                    user_name: user?.display_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown',
-                    currency: balance.currency,
-                    amount: balance.amount,
-                    usd_value: balance.usd_value,
-                    type: 'user_balance',
-                    updated_at: balance.updated_at,
-                    available: null,
-                    locked: null,
-                    total: null
-                };
+                
+                if (combinedBalances[key]) {
+                    // Update existing entry
+                    combinedBalances[key].amount = balance.amount;
+                    combinedBalances[key].usd_value = balance.usd_value;
+                    combinedBalances[key].updated_at = balance.updated_at;
+                } else {
+                    // Add new currency entry for this user
+                    combinedBalances[key] = {
+                        user_id: balance.user_id,
+                        user_email: user?.email || 'Unknown',
+                        user_name: user?.display_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown',
+                        currency: balance.currency,
+                        amount: balance.amount,
+                        usd_value: balance.usd_value,
+                        type: 'user_balance',
+                        updated_at: balance.updated_at,
+                        available: 0,
+                        locked: 0,
+                        total: 0
+                    };
+                }
             });
 
             // Process wallet_balances and merge
             walletBalances.forEach(wallet => {
                 const key = `${wallet.user_id}_${wallet.currency}`;
-                const user = users.find(u => u.user_id === wallet.user_id);
                 
                 if (combinedBalances[key]) {
-                    // Merge with existing user_balance
+                    // Merge with existing entry
                     combinedBalances[key].available = wallet.available;
                     combinedBalances[key].locked = wallet.locked;
                     combinedBalances[key].total = wallet.total;
                     combinedBalances[key].type = 'combined';
+                    if (new Date(wallet.updated_at) > new Date(combinedBalances[key].updated_at)) {
+                        combinedBalances[key].updated_at = wallet.updated_at;
+                    }
                 } else {
                     // Create new entry for wallet-only balance
+                    const user = users.find(u => u.user_id === wallet.user_id);
                     combinedBalances[key] = {
                         user_id: wallet.user_id,
                         user_email: user?.email || 'Unknown',
