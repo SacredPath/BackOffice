@@ -58,6 +58,17 @@ class AdminAPI {
                 return null;
             }
 
+            // Handle 201 responses (created) - might have empty body
+            if (response.status === 201) {
+                try {
+                    const data = await response.json();
+                    return data;
+                } catch (jsonError) {
+                    // Return success object if response body is empty
+                    return { success: true, message: 'Created successfully' };
+                }
+            }
+
             const data = await response.json();
             return data;
         } catch (error) {
@@ -668,7 +679,7 @@ class AdminAPI {
                     });
                 } else {
                     // Create new record
-                    results.user_balance = await this.request('user_balances', {
+                    const createResponse = await this.request('user_balances', {
                         method: 'POST',
                         body: JSON.stringify({
                             user_id: userId,
@@ -679,6 +690,7 @@ class AdminAPI {
                             updated_at: new Date().toISOString()
                         })
                     });
+                    results.user_balance = createResponse;
                 }
             }
 
@@ -703,7 +715,7 @@ class AdminAPI {
                     });
                 } else {
                     // Create new record
-                    results.wallet_balance = await this.request('wallet_balances', {
+                    const createResponse = await this.request('wallet_balances', {
                         method: 'POST',
                         body: JSON.stringify({
                             user_id: userId,
@@ -715,6 +727,7 @@ class AdminAPI {
                             updated_at: new Date().toISOString()
                         })
                     });
+                    results.wallet_balance = createResponse;
                 }
             }
 
